@@ -66,6 +66,11 @@
   position: absolute;
   inset: 0;
   z-index: 3;
+  pointer-events: none;
+}
+
+.notes-layer .sticky-note {
+  pointer-events: auto;
 }
 
 .sticky-note {
