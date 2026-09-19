@@ -1,5 +1,5 @@
 const DB_NAME = "petal-db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise = null;
 
@@ -15,6 +15,10 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains("highlights")) {
         const store = db.createObjectStore("highlights", { keyPath: "id" });
+        store.createIndex("pdfHash_page", ["pdfHash", "page"]);
+      }
+      if (!db.objectStoreNames.contains("notes")) {
+        const store = db.createObjectStore("notes", { keyPath: "id" });
         store.createIndex("pdfHash_page", ["pdfHash", "page"]);
       }
     };
@@ -56,4 +60,17 @@ export async function putHighlight(highlight) {
 
 export async function deleteHighlight(id) {
   return toPromise((await store("highlights", "readwrite")).delete(id));
+}
+
+export async function getNotesForPage(pdfHash, page) {
+  const s = await store("notes", "readonly");
+  return toPromise(s.index("pdfHash_page").getAll([pdfHash, page]));
+}
+
+export async function putNote(note) {
+  return toPromise((await store("notes", "readwrite")).put(note));
+}
+
+export async function deleteNote(id) {
+  return toPromise((await store("notes", "readwrite")).delete(id));
 }

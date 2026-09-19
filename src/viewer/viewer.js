@@ -6,6 +6,8 @@ import { hashFile } from "./app/hash.js";
 import { getPdfRecord, putPdfRecord } from "./app/db.js";
 import { initSidePanel } from "./sidepanel/sidepanel.js";
 import { initHighlights, setAnnotateMode, setActiveColor, loadHighlightsForPage } from "./highlights/highlight-manager.js";
+import { renderNoteTray } from "./notes/note-tray.js";
+import { initNoteDropTarget, loadNotesForPage } from "./notes/note-manager.js";
 
 const BASE_SCALE = 1.25;
 const ZOOM_STEP = 1.1;
@@ -35,6 +37,7 @@ const els = {
   annotateGroup: document.getElementById("annotate-group"),
   annotateToggle: document.getElementById("annotate-toggle"),
   colorSwatches: document.getElementById("color-swatches"),
+  noteTray: document.getElementById("note-tray"),
 };
 
 let disposeSidePanel = null;
@@ -73,7 +76,11 @@ els.annotateToggle.addEventListener("click", () => {
 async function renderCurrentPdf() {
   await renderAllPages(state.pdfDoc, {
     pageListEl: els.pageList,
-    onPageRendered: (wrapper, pageNumber, viewport) => loadHighlightsForPage(wrapper, pageNumber, viewport),
+    onPageRendered: async (wrapper, pageNumber, viewport) => {
+      initNoteDropTarget(wrapper, pageNumber, viewport);
+      await loadHighlightsForPage(wrapper, pageNumber, viewport);
+      await loadNotesForPage(wrapper, pageNumber, viewport);
+    },
   });
 
   disposeSidePanel?.();
@@ -123,6 +130,7 @@ async function openFile(file) {
 
 initHighlights({ pageListEl: els.pageList });
 initColorSwatches();
+renderNoteTray(els.noteTray);
 
 initFileInput({
   openBtn: els.openBtn,
