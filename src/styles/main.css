@@ -1,0 +1,64 @@
+@import "./base.css";
+@import "./toolbar.css";
+@import "./sidepanel.css";
+@import "./empty-state.css";
+@import "./text-layer.css";
+
+@font-face {
+  font-family: "Patrick Hand";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/PatrickHand-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Caveat";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../fonts/Caveat-Regular.woff2") format("woff2");
+}
+
+:root {
+  --paper: #faf3e3;
+  --paper-raised: #fffaf0;
+  --paper-edge: #ecdfc2;
+  --ink: #2e2a24;
+  --ink-soft: #5b5346;
+  --accent: #e8809e;
+  --accent-ink: #6c2f42;
+  --focus-ring: #4a90c4;
+
+  --color-yellow: #f5d97a;
+  --color-yellow-ink: #4a3c0a;
+  --color-yellow-marker: rgba(245, 217, 122, 0.45);
+
+  --color-pink: #f4a6c1;
+  --color-pink-ink: #5c1f34;
+  --color-pink-marker: rgba(244, 166, 193, 0.45);
+
+  --color-mint: #a8dfc4;
+  --color-mint-ink: #17402c;
+  --color-mint-marker: rgba(168, 223, 196, 0.45);
+
+  --color-sky: #a9d1e8;
+  --color-sky-ink: #123249;
+  --color-sky-marker: rgba(169, 209, 232, 0.45);
+
+  --color-lavender: #c9b6e4;
+  --color-lavender-ink: #392260;
+  --color-lavender-marker: rgba(201, 182, 228, 0.45);
+
+  --motion-fast: 150ms;
+  --motion-medium: 220ms;
+  --motion-ease: cubic-bezier(0.34, 1.35, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-medium: 0ms;
+    --motion-ease: linear;
+  }
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Petal</title>
+<link rel="stylesheet" href="viewer.css" />
+</head>
+<body>
+<div id="app">
+  <header class="toolbar" id="toolbar">
+    <div class="toolbar-brand">
+      <span class="toolbar-brand-mark" aria-hidden="true">🌸</span>
+      <span class="toolbar-brand-name">Petal</span>
+    </div>
+
+    <div class="toolbar-group">
+      <button type="button" class="btn btn-primary" id="open-btn">Open PDF</button>
+    </div>
+
+    <div class="toolbar-group toolbar-group-annotate" id="annotate-group" hidden>
+      <button type="button" class="pen-toggle" id="annotate-toggle" aria-pressed="false">
+        <span class="pen-toggle-icon" aria-hidden="true">🖊️</span>
+        <span>Annotate</span>
+      </button>
+      <div class="color-swatches" id="color-swatches" role="radiogroup" aria-label="Highlighter color"></div>
+    </div>
+
+    <div class="toolbar-group toolbar-group-zoom" id="zoom-group" hidden>
+      <button type="button" class="btn btn-icon" id="zoom-out-btn" aria-label="Zoom out">−</button>
+      <span class="zoom-level" id="zoom-level">100%</span>
+      <button type="button" class="btn btn-icon" id="zoom-in-btn" aria-label="Zoom in">+</button>
+    </div>
+
+    <div class="toolbar-spacer"></div>
+
+    <div class="toolbar-group toolbar-group-export" id="export-group" hidden>
+      <button type="button" class="btn" id="export-btn">Export</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <main class="viewer-main" id="viewer-main">
+      <div class="empty-state" id="empty-state">
+        <p class="empty-state-title">No PDF open yet</p>
+        <p class="empty-state-body">Drop a PDF here, or use the Open PDF button above.</p>
+      </div>
+      <div class="page-list" id="page-list" hidden></div>
+    </main>
+
+    <aside class="side-panel" id="side-panel" hidden>
+      <section class="side-section thumbnails" id="thumbnails" aria-label="Page thumbnails"></section>
+    </aside>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept="application/pdf,.pdf" hidden />
+
+<script type="module" src="viewer.js"></script>
+</body>
+</html>

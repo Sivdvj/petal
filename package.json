@@ -1,0 +1,21 @@
+{
+  "name": "petal",
+  "version": "0.1.0",
+  "description": "A cozy reader and annotator for PDFs.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.7.76"
+  },
+  "allowScripts": {
+    "esbuild@0.24.2": true
+  }
+}
