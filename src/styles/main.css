@@ -3,6 +3,7 @@
 @import "./sidepanel.css";
 @import "./empty-state.css";
 @import "./text-layer.css";
+@import "./highlights.css";
 
 @font-face {
   font-family: "Patrick Hand";

@@ -1,0 +1,33 @@
+.highlight-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.highlight {
+  position: absolute;
+  border-radius: 3px 7px 4px 8px;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.highlight-yellow {
+  background: var(--color-yellow-marker);
+}
+
+.highlight-pink {
+  background: var(--color-pink-marker);
+}
+
+.highlight-mint {
+  background: var(--color-mint-marker);
+}
+
+.highlight-sky {
+  background: var(--color-sky-marker);
+}
+
+.highlight-lavender {
+  background: var(--color-lavender-marker);
+}

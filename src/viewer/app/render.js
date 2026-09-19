@@ -1,15 +1,23 @@
 import { pdfjsLib } from "./pdf-loader.js";
 import { state } from "./state.js";
 
-export async function renderAllPages(pdfDoc, { pageListEl }) {
+// Keyed by page number, so highlight code can re-project stored PDF-unit
+// rects onto whatever viewport (zoom/rotation) is currently rendered.
+export const pageViewports = new Map();
+
+export async function renderAllPages(pdfDoc, { pageListEl, onPageRendered }) {
   pageListEl.innerHTML = "";
+  pageViewports.clear();
 
   for (let pageNumber = 1; pageNumber <= pdfDoc.numPages; pageNumber++) {
     const wrapper = document.createElement("div");
     wrapper.className = "page-wrapper";
     wrapper.dataset.pageNumber = String(pageNumber);
     pageListEl.appendChild(wrapper);
-    await renderPage(pdfDoc, pageNumber, wrapper);
+
+    const viewport = await renderPage(pdfDoc, pageNumber, wrapper);
+    pageViewports.set(pageNumber, viewport);
+    await onPageRendered?.(wrapper, pageNumber, viewport);
   }
 }
 
@@ -41,4 +49,6 @@ async function renderPage(pdfDoc, pageNumber, wrapper) {
     viewport,
   });
   await textLayer.render();
+
+  return viewport;
 }

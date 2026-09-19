@@ -3,6 +3,7 @@ const listeners = new Set();
 export const state = {
   file: null,
   pdfDoc: null,
+  pdfHash: null,
   numPages: 0,
   currentPage: 1,
   scale: 1.25,
