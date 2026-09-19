@@ -5,17 +5,32 @@ import { state } from "./state.js";
 // rects onto whatever viewport (zoom/rotation) is currently rendered.
 export const pageViewports = new Map();
 
+// Zoom buttons can fire faster than a render pass completes. Without a guard,
+// two overlapping renderAllPages() calls interleave their DOM writes (one
+// call's innerHTML="" wipes the other's already-appended pages) and both
+// write into the shared pageViewports map, producing duplicated/reordered
+// pages and highlights/notes anchored to a stale, mismatched viewport. Each
+// call gets a ticket; a call that's been superseded stops before touching
+// shared state again.
+let renderTicket = 0;
+
 export async function renderAllPages(pdfDoc, { pageListEl, onPageRendered }) {
+  const myTicket = ++renderTicket;
+
   pageListEl.innerHTML = "";
   pageViewports.clear();
 
   for (let pageNumber = 1; pageNumber <= pdfDoc.numPages; pageNumber++) {
+    if (myTicket !== renderTicket) return;
+
     const wrapper = document.createElement("div");
     wrapper.className = "page-wrapper";
     wrapper.dataset.pageNumber = String(pageNumber);
     pageListEl.appendChild(wrapper);
 
     const viewport = await renderPage(pdfDoc, pageNumber, wrapper);
+    if (myTicket !== renderTicket) return;
+
     pageViewports.set(pageNumber, viewport);
     await onPageRendered?.(wrapper, pageNumber, viewport);
   }

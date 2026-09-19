@@ -44,6 +44,7 @@ const els = {
 };
 
 let disposeSidePanel = null;
+let renderCallTicket = 0;
 
 function updateZoomLabel() {
   els.zoomLevel.textContent = `${Math.round((state.scale / BASE_SCALE) * 100)}%`;
@@ -77,6 +78,8 @@ els.annotateToggle.addEventListener("click", () => {
 });
 
 async function renderCurrentPdf() {
+  const myCallTicket = ++renderCallTicket;
+
   await renderAllPages(state.pdfDoc, {
     pageListEl: els.pageList,
     onPageRendered: async (wrapper, pageNumber, viewport) => {
@@ -85,6 +88,7 @@ async function renderCurrentPdf() {
       await loadNotesForPage(wrapper, pageNumber, viewport);
     },
   });
+  if (myCallTicket !== renderCallTicket) return;
 
   disposeSidePanel?.();
   disposeSidePanel = await initSidePanel({
@@ -94,6 +98,7 @@ async function renderCurrentPdf() {
     viewerMainEl: els.viewerMain,
     pageListEl: els.pageList,
   });
+  if (myCallTicket !== renderCallTicket) return;
 
   updateZoomLabel();
 }
@@ -144,17 +149,22 @@ initFileInput({
   onFile: openFile,
 });
 
-els.zoomInBtn.addEventListener("click", async () => {
+async function zoomBy(factor) {
   if (!state.pdfDoc) return;
-  setState({ scale: Math.min(MAX_SCALE, state.scale * ZOOM_STEP) });
-  await renderCurrentPdf();
-});
+  setState({ scale: Math.min(MAX_SCALE, Math.max(MIN_SCALE, state.scale * factor)) });
 
-els.zoomOutBtn.addEventListener("click", async () => {
-  if (!state.pdfDoc) return;
-  setState({ scale: Math.max(MIN_SCALE, state.scale / ZOOM_STEP) });
-  await renderCurrentPdf();
-});
+  els.zoomInBtn.disabled = true;
+  els.zoomOutBtn.disabled = true;
+  try {
+    await renderCurrentPdf();
+  } finally {
+    els.zoomInBtn.disabled = false;
+    els.zoomOutBtn.disabled = false;
+  }
+}
+
+els.zoomInBtn.addEventListener("click", () => zoomBy(ZOOM_STEP));
+els.zoomOutBtn.addEventListener("click", () => zoomBy(1 / ZOOM_STEP));
 
 els.exportBtn.addEventListener("click", async () => {
   if (!state.pdfDoc) return;
