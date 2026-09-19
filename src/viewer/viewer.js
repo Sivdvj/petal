@@ -38,7 +38,10 @@ const els = {
   annotateGroup: document.getElementById("annotate-group"),
   annotateToggle: document.getElementById("annotate-toggle"),
   colorSwatches: document.getElementById("color-swatches"),
-  noteTray: document.getElementById("note-tray"),
+  notesGroup: document.getElementById("notes-group"),
+  notesDropdown: document.getElementById("notes-dropdown"),
+  notesToggle: document.getElementById("notes-toggle"),
+  notesDropdownPanel: document.getElementById("notes-dropdown-panel"),
   exportGroup: document.getElementById("export-group"),
   exportBtn: document.getElementById("export-btn"),
 };
@@ -75,6 +78,29 @@ els.annotateToggle.addEventListener("click", () => {
   const next = els.annotateToggle.getAttribute("aria-pressed") !== "true";
   els.annotateToggle.setAttribute("aria-pressed", String(next));
   setAnnotateMode(next);
+});
+
+function setNotesDropdownOpen(open) {
+  els.notesDropdownPanel.hidden = !open;
+  els.notesToggle.setAttribute("aria-expanded", String(open));
+}
+
+els.notesToggle.addEventListener("click", (e) => {
+  e.stopPropagation();
+  setNotesDropdownOpen(els.notesDropdownPanel.hidden);
+});
+
+document.addEventListener("click", (e) => {
+  if (!els.notesDropdownPanel.hidden && !els.notesDropdown?.contains(e.target)) {
+    setNotesDropdownOpen(false);
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !els.notesDropdownPanel.hidden) {
+    setNotesDropdownOpen(false);
+    els.notesToggle.focus();
+  }
 });
 
 async function renderCurrentPdf() {
@@ -132,6 +158,7 @@ async function openFile(file) {
   setState({ file, pdfDoc, pdfHash, numPages: pdfDoc.numPages, currentPage: 1, scale: BASE_SCALE });
   els.zoomGroup.hidden = false;
   els.annotateGroup.hidden = false;
+  els.notesGroup.hidden = false;
   els.exportGroup.hidden = false;
 
   await renderCurrentPdf();
@@ -139,7 +166,7 @@ async function openFile(file) {
 
 initHighlights({ pageListEl: els.pageList });
 initColorSwatches();
-renderNoteTray(els.noteTray);
+renderNoteTray(els.notesDropdownPanel);
 
 initFileInput({
   openBtn: els.openBtn,

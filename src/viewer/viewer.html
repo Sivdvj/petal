@@ -34,6 +34,15 @@
 
     <div class="toolbar-spacer"></div>
 
+    <div class="toolbar-group toolbar-group-notes" id="notes-group" hidden>
+      <div class="notes-dropdown" id="notes-dropdown">
+        <button type="button" class="btn" id="notes-toggle" aria-haspopup="true" aria-expanded="false">
+          <span aria-hidden="true">🗒️</span> Sticky notes
+        </button>
+        <div class="notes-dropdown-panel" id="notes-dropdown-panel" hidden></div>
+      </div>
+    </div>
+
     <div class="toolbar-group toolbar-group-export" id="export-group" hidden>
       <button type="button" class="btn" id="export-btn">Export</button>
     </div>
@@ -50,7 +59,6 @@
 
     <aside class="side-panel" id="side-panel" hidden>
       <section class="side-section thumbnails" id="thumbnails" aria-label="Page thumbnails"></section>
-      <section class="side-section note-tray" id="note-tray" aria-label="Sticky note tray"></section>
     </aside>
   </div>
 </div>

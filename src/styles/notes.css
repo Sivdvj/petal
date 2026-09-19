@@ -1,3 +1,20 @@
+.notes-dropdown {
+  position: relative;
+}
+
+.notes-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 210px;
+  background: var(--paper-raised);
+  border: 1px solid var(--paper-edge);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(46, 42, 36, 0.22);
+  padding: 14px;
+  z-index: 20;
+}
+
 .note-tray-hint {
   font-size: 14px;
   color: var(--ink-soft);
