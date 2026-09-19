@@ -64,7 +64,9 @@ export function initNoteDropTarget(wrapper, pageNumber, viewport) {
     el.classList.add("is-dropping");
     setTimeout(() => el.classList.remove("is-dropping"), DROP_SQUISH_MS);
     layer.appendChild(el);
-    el.focus();
+    // Focus the editable text directly (not the note wrapper) so the user
+    // can start typing immediately after dropping a note.
+    el.querySelector(".sticky-note-text")?.focus();
   });
 }
 
