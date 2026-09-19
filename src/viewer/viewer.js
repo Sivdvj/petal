@@ -8,6 +8,7 @@ import { initSidePanel } from "./sidepanel/sidepanel.js";
 import { initHighlights, setAnnotateMode, setActiveColor, loadHighlightsForPage } from "./highlights/highlight-manager.js";
 import { renderNoteTray } from "./notes/note-tray.js";
 import { initNoteDropTarget, loadNotesForPage } from "./notes/note-manager.js";
+import { exportAnnotatedPdf } from "./export/export-pdf.js";
 
 const BASE_SCALE = 1.25;
 const ZOOM_STEP = 1.1;
@@ -38,6 +39,8 @@ const els = {
   annotateToggle: document.getElementById("annotate-toggle"),
   colorSwatches: document.getElementById("color-swatches"),
   noteTray: document.getElementById("note-tray"),
+  exportGroup: document.getElementById("export-group"),
+  exportBtn: document.getElementById("export-btn"),
 };
 
 let disposeSidePanel = null;
@@ -124,6 +127,7 @@ async function openFile(file) {
   setState({ file, pdfDoc, pdfHash, numPages: pdfDoc.numPages, currentPage: 1, scale: BASE_SCALE });
   els.zoomGroup.hidden = false;
   els.annotateGroup.hidden = false;
+  els.exportGroup.hidden = false;
 
   await renderCurrentPdf();
 }
@@ -150,4 +154,20 @@ els.zoomOutBtn.addEventListener("click", async () => {
   if (!state.pdfDoc) return;
   setState({ scale: Math.max(MIN_SCALE, state.scale / ZOOM_STEP) });
   await renderCurrentPdf();
+});
+
+els.exportBtn.addEventListener("click", async () => {
+  if (!state.pdfDoc) return;
+  const originalLabel = els.exportBtn.textContent;
+  els.exportBtn.disabled = true;
+  els.exportBtn.textContent = "Exporting...";
+  try {
+    await exportAnnotatedPdf();
+  } catch (err) {
+    console.error("Failed to export PDF", err);
+    window.alert("Sorry, something went wrong exporting this PDF.");
+  } finally {
+    els.exportBtn.disabled = false;
+    els.exportBtn.textContent = originalLabel;
+  }
 });
