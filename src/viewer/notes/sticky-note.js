@@ -29,6 +29,9 @@ function applyPosition(el, note, viewport) {
   el.style.top = `${rect.top}px`;
   el.style.width = `${rect.width}px`;
   el.style.height = `${rect.height}px`;
+  // A minimized note is a fixed-size circle, so CSS needs the expanded width to
+  // tuck it against the note's right edge (see .is-minimized in notes.css).
+  el.style.setProperty("--note-width", `${rect.width}px`);
 }
 
 function persistPositionFromPixels(el, note, viewport) {

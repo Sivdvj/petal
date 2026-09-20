@@ -226,6 +226,10 @@
 .sticky-note.is-minimized {
   width: 40px !important;
   height: 40px !important;
+  /* Collapse toward the top-right corner, where the toggle button sits, so the
+     button stays under the pointer and one spot minimizes and expands the note.
+     A margin (not a transform) so the focus rule above can't undo it. */
+  margin-left: calc(var(--note-width, 40px) - 40px);
   min-height: 0;
   padding: 0;
   border-radius: 50%;
