@@ -190,6 +190,7 @@
   overflow: auto;
   outline: none;
   cursor: text;
+  caret-color: currentColor;
 }
 
 .sticky-note-text:empty::before {

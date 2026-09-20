@@ -2,6 +2,8 @@ import { pdfRectToViewportRect } from "../app/coords.js";
 import { putNote } from "../app/db.js";
 
 const DROP_SQUISH_MS = 260;
+// Pointer travel before a press on the paper counts as a drag rather than a click.
+const DRAG_THRESHOLD_PX = 4;
 
 // Derives a stable -3deg..3deg tilt from the note's id, so the "random"
 // look stays fixed across re-renders instead of jittering on every zoom.
@@ -98,18 +100,35 @@ export function createStickyNote({ note, viewport }) {
   });
   minimizeBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
 
+  function focusTextAtEnd() {
+    textEl.focus();
+    const range = document.createRange();
+    range.selectNodeContents(textEl);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  // Pressing the paper (not the text box or a button) would otherwise move focus
+  // to the note wrapper and drop the caret; a plain click focuses the text instead.
+  el.addEventListener("mousedown", (e) => {
+    if (textEl.contains(e.target) || e.target.closest("button")) return;
+    e.preventDefault();
+  });
+
   let dragState = null;
 
   el.addEventListener("pointerdown", (e) => {
-    if (e.target === textEl || textEl.contains(e.target) || e.target === minimizeBtn) return;
+    if (e.target === textEl || textEl.contains(e.target) || e.target.closest("button")) return;
     el.setPointerCapture(e.pointerId);
-    el.classList.add("is-dragging");
     dragState = {
       pointerId: e.pointerId,
       startClientX: e.clientX,
       startClientY: e.clientY,
       startLeft: parseFloat(el.style.left),
       startTop: parseFloat(el.style.top),
+      moved: false,
     };
   });
 
@@ -117,13 +136,23 @@ export function createStickyNote({ note, viewport }) {
     if (!dragState || e.pointerId !== dragState.pointerId) return;
     const dx = e.clientX - dragState.startClientX;
     const dy = e.clientY - dragState.startClientY;
+    if (!dragState.moved) {
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+      dragState.moved = true;
+      el.classList.add("is-dragging");
+    }
     el.style.left = `${dragState.startLeft + dx}px`;
     el.style.top = `${dragState.startTop + dy}px`;
   });
 
   function endDrag(e) {
     if (!dragState || e.pointerId !== dragState.pointerId) return;
+    const { moved } = dragState;
     dragState = null;
+    if (!moved) {
+      if (e.type === "pointerup" && !note.minimized) focusTextAtEnd();
+      return;
+    }
     el.classList.remove("is-dragging");
     el.classList.add("is-dropping");
     setTimeout(() => el.classList.remove("is-dropping"), DROP_SQUISH_MS);
