@@ -5,7 +5,7 @@ import { initFileInput } from "./app/dnd.js";
 import { hashFile } from "./app/hash.js";
 import { getPdfRecord, putPdfRecord } from "./app/db.js";
 import { initSidePanel } from "./sidepanel/sidepanel.js";
-import { initHighlights, setAnnotateMode, setActiveColor, loadHighlightsForPage } from "./highlights/highlight-manager.js";
+import { initHighlights, setAnnotateMode, setEraseMode, setActiveColor, loadHighlightsForPage } from "./highlights/highlight-manager.js";
 import { renderNoteTray } from "./notes/note-tray.js";
 import { initNoteDropTarget, loadNotesForPage } from "./notes/note-manager.js";
 import { exportAnnotatedPdf } from "./export/export-pdf.js";
@@ -37,6 +37,7 @@ const els = {
   zoomLevel: document.getElementById("zoom-level"),
   annotateGroup: document.getElementById("annotate-group"),
   annotateToggle: document.getElementById("annotate-toggle"),
+  eraseToggle: document.getElementById("erase-toggle"),
   colorSwatches: document.getElementById("color-swatches"),
   notesGroup: document.getElementById("notes-group"),
   notesDropdown: document.getElementById("notes-dropdown"),
@@ -74,10 +75,29 @@ function initColorSwatches() {
   setActiveColor(HIGHLIGHT_COLORS[0].id);
 }
 
+function isPressed(btn) {
+  return btn.getAttribute("aria-pressed") === "true";
+}
+
+// Annotate and erase both claim the pointer on the page, so only one can be on.
 els.annotateToggle.addEventListener("click", () => {
-  const next = els.annotateToggle.getAttribute("aria-pressed") !== "true";
+  const next = !isPressed(els.annotateToggle);
   els.annotateToggle.setAttribute("aria-pressed", String(next));
   setAnnotateMode(next);
+  if (next) {
+    els.eraseToggle.setAttribute("aria-pressed", "false");
+    setEraseMode(false);
+  }
+});
+
+els.eraseToggle.addEventListener("click", () => {
+  const next = !isPressed(els.eraseToggle);
+  els.eraseToggle.setAttribute("aria-pressed", String(next));
+  setEraseMode(next);
+  if (next) {
+    els.annotateToggle.setAttribute("aria-pressed", "false");
+    setAnnotateMode(false);
+  }
 });
 
 function setNotesDropdownOpen(open) {
