@@ -111,6 +111,13 @@
   box-shadow: 0 8px 16px rgba(46, 42, 36, 0.3);
 }
 
+/* In Vivaldi the caret didn't paint in tilted notes (typing still worked), and
+   dropping the transform and shadow fixed it, so a note straightens while focused.
+   Dragging and removing set their own transform below and win by source order. */
+.sticky-note:focus-within {
+  transform: none;
+}
+
 .sticky-note.is-dragging {
   cursor: grabbing;
   opacity: 1;
