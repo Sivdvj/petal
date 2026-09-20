@@ -34,10 +34,28 @@
   user-select: none;
 }
 
+/* While a selection is being dragged, the end-of-content div grows to cover the
+   whole layer (behind the spans) so blank space still has something to hit. */
+.text-layer.selecting .end-of-content {
+  top: 0;
+}
+
+/* Every span paints its own selection background, so a translucent one stacks
+   darker wherever neighbours overlap. Paint it opaque and fade the whole layer
+   instead: the layer is composited as one group, so overlaps disappear. (The
+   text is transparent, so the fade only affects the selection.) */
 .text-layer.is-annotating {
   cursor: crosshair;
+  opacity: 0.35;
 }
 
 .text-layer.is-annotating ::selection {
-  background: rgba(232, 128, 158, 0.35);
+  background: rgb(232, 128, 158);
+}
+
+/* Line breaks are absolutely positioned at the layer's top-left corner, so a
+   selected <br> would otherwise paint a stray sliver there. */
+.text-layer br::selection,
+.text-layer.is-annotating br::selection {
+  background: transparent;
 }

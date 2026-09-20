@@ -1,5 +1,6 @@
 import { pdfjsLib } from "./pdf-loader.js";
 import { state } from "./state.js";
+import { attachSelectionGuard } from "./text-selection.js";
 
 // Keyed by page number, so highlight code can re-project stored PDF-unit
 // rects onto whatever viewport (zoom/rotation) is currently rendered.
@@ -48,6 +49,11 @@ async function renderPage(pdfDoc, pageNumber, wrapper) {
   canvas.style.height = `${Math.floor(viewport.height)}px`;
   wrapper.style.width = `${Math.floor(viewport.width)}px`;
   wrapper.style.height = `${Math.floor(viewport.height)}px`;
+  // pdf.js sizes and positions every text span with calc(var(--scale-factor) * …).
+  // Its own viewer defines the variable on the page element; without it the
+  // calc() is invalid, every span falls back to the inherited 17px body font,
+  // and selection/highlight boxes stop matching the glyphs they cover.
+  wrapper.style.setProperty("--scale-factor", String(viewport.scale));
   wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext("2d");
@@ -64,6 +70,7 @@ async function renderPage(pdfDoc, pageNumber, wrapper) {
     viewport,
   });
   await textLayer.render();
+  attachSelectionGuard(textLayerDiv);
 
   return viewport;
 }
