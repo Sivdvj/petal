@@ -1,9 +1,14 @@
 import { pdfRectToViewportRect } from "../app/coords.js";
-import { putNote } from "../app/db.js";
+import { putNote, deleteNote } from "../app/db.js";
 
 const DROP_SQUISH_MS = 260;
 // Pointer travel before a press on the paper counts as a drag rather than a click.
 const DRAG_THRESHOLD_PX = 4;
+const REMOVE_FADE_MS = 200;
+
+const TRASH_ICON =
+  '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4h11M6.5 4V2.5h3V4M4 4l.7 9h6.6L12 4"/></svg>';
 
 // Derives a stable -3deg..3deg tilt from the note's id, so the "random"
 // look stays fixed across re-renders instead of jittering on every zoom.
@@ -62,8 +67,14 @@ export function createStickyNote({ note, viewport }) {
   const minimizeBtn = document.createElement("button");
   minimizeBtn.type = "button";
   minimizeBtn.className = "sticky-note-minimize";
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "sticky-note-delete";
+  deleteBtn.innerHTML = TRASH_ICON;
+  deleteBtn.title = "Delete note";
+  deleteBtn.setAttribute("aria-label", "Delete note");
   el.appendChild(toolbar);
-  toolbar.appendChild(minimizeBtn);
+  toolbar.append(deleteBtn, minimizeBtn);
 
   const textEl = document.createElement("div");
   textEl.className = "sticky-note-text";
@@ -99,6 +110,19 @@ export function createStickyNote({ note, viewport }) {
     putNote({ ...note });
   });
   minimizeBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+
+  deleteBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    try {
+      await deleteNote(note.id);
+    } catch (err) {
+      console.error("Failed to delete note", err);
+      return;
+    }
+    el.classList.add("is-removing");
+    setTimeout(() => el.remove(), REMOVE_FADE_MS);
+  });
+  deleteBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
 
   function focusTextAtEnd() {
     textEl.focus();
