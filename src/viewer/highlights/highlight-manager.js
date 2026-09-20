@@ -3,6 +3,7 @@ import { state } from "../app/state.js";
 import { clientRectToPdfRect } from "../app/coords.js";
 import { putHighlight, getHighlightsForPage } from "../app/db.js";
 import { addHighlightToPage } from "./highlight-render.js";
+import { getSelectionLineRects } from "./selection-rects.js";
 
 let pageListEl = null;
 let annotateMode = false;
@@ -40,7 +41,7 @@ function splitSelectionByPage(range, wrappers) {
     if (!wrapper.contains(range.startContainer)) subRange.setStart(textLayer, 0);
     if (!wrapper.contains(range.endContainer)) subRange.setEnd(textLayer, textLayer.childNodes.length);
 
-    touched.push({ wrapper, range: subRange });
+    touched.push({ wrapper, textLayer, range: subRange });
   }
   return touched;
 }
@@ -55,12 +56,12 @@ async function handlePointerUp() {
   const wrappers = Array.from(pageListEl.querySelectorAll(".page-wrapper"));
   const perPage = splitSelectionByPage(range, wrappers);
 
-  for (const { wrapper, range: pageRange } of perPage) {
+  for (const { wrapper, textLayer, range: pageRange } of perPage) {
     const pageNumber = Number(wrapper.dataset.pageNumber);
     const viewport = pageViewports.get(pageNumber);
     if (!viewport) continue;
 
-    const clientRects = Array.from(pageRange.getClientRects()).filter((r) => r.width > 0 && r.height > 0);
+    const clientRects = getSelectionLineRects(pageRange, textLayer);
     if (clientRects.length === 0) continue;
 
     const wrapperRect = wrapper.getBoundingClientRect();
