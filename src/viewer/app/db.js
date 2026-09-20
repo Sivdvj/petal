@@ -28,7 +28,20 @@ function openDb() {
       }
     };
 
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      // If another tab upgrades the schema, step aside rather than block it.
+      db.onversionchange = () => {
+        db.close();
+        dbPromise = null;
+      };
+      resolve(db);
+    };
+    // Tabs running an older build hold the old schema open and cannot be told to
+    // step aside, so the upgrade waits (and this tab looks empty) until they close.
+    request.onblocked = () => {
+      window.alert("Petal is updating its storage. Please close your other Petal tabs and this one will carry on.");
+    };
     request.onerror = () => reject(request.error);
   });
   return dbPromise;
