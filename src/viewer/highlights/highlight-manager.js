@@ -46,11 +46,20 @@ function splitSelectionByPage(range, wrappers) {
   return touched;
 }
 
+function isInsideNote(node) {
+  const el = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+  return !!el?.closest(".sticky-note");
+}
+
 async function handlePointerUp() {
   if (!annotateMode || !state.pdfHash || !pageListEl) return;
 
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+  // Selecting text inside a sticky note is editing, not highlighting. Bailing
+  // here also keeps removeAllRanges() below from killing the note's caret.
+  if (isInsideNote(selection.anchorNode) || isInsideNote(selection.focusNode)) return;
 
   const range = selection.getRangeAt(0);
   const wrappers = Array.from(pageListEl.querySelectorAll(".page-wrapper"));
