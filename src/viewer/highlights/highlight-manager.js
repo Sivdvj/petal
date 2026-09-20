@@ -1,7 +1,7 @@
 import { pageViewports } from "../app/render.js";
 import { state } from "../app/state.js";
 import { clientRectToPdfRect } from "../app/coords.js";
-import { putHighlight, getHighlightsForPage } from "../app/db.js";
+import { putHighlight, getHighlightsForPage, deleteHighlight } from "../app/db.js";
 import { addHighlightToPage } from "./highlight-render.js";
 import { getSelectionLineRects } from "./selection-rects.js";
 
@@ -9,9 +9,14 @@ let pageListEl = null;
 let annotateMode = false;
 let activeColor = "yellow";
 
+const REMOVE_FADE_MS = 160;
+
 export function initHighlights({ pageListEl: el }) {
   pageListEl = el;
   document.addEventListener("pointerup", handlePointerUp);
+  pageListEl.addEventListener("mouseover", handleEraseHover);
+  pageListEl.addEventListener("mouseout", clearEraseHover);
+  pageListEl.addEventListener("click", handleEraseClick);
 }
 
 export function setAnnotateMode(enabled) {
@@ -20,6 +25,46 @@ export function setAnnotateMode(enabled) {
     el.classList.toggle("is-annotating", enabled);
   });
   if (!enabled) window.getSelection()?.removeAllRanges();
+}
+
+// While erasing, highlights become clickable (see .is-erasing in highlights.css);
+// the rest of the time they stay pointer-transparent so text selection works.
+export function setEraseMode(enabled) {
+  pageListEl?.classList.toggle("is-erasing", enabled);
+  if (!enabled) clearEraseHover();
+}
+
+// A highlight is one div per line, so hover and removal act on every piece
+// that shares its id.
+function piecesOf(id) {
+  return pageListEl.querySelectorAll(`.highlight[data-highlight-id="${id}"]`);
+}
+
+function handleEraseHover(e) {
+  if (!pageListEl.classList.contains("is-erasing")) return;
+  const piece = e.target.closest?.(".highlight");
+  if (piece) piecesOf(piece.dataset.highlightId).forEach((el) => el.classList.add("is-erase-hover"));
+}
+
+function clearEraseHover() {
+  pageListEl?.querySelectorAll(".is-erase-hover").forEach((el) => el.classList.remove("is-erase-hover"));
+}
+
+async function handleEraseClick(e) {
+  if (!pageListEl.classList.contains("is-erasing")) return;
+  const piece = e.target.closest?.(".highlight");
+  if (!piece) return;
+
+  const id = piece.dataset.highlightId;
+  try {
+    await deleteHighlight(id);
+  } catch (err) {
+    console.error("Failed to delete highlight", err);
+    return;
+  }
+  const pieces = piecesOf(id);
+  pieces.forEach((el) => el.classList.add("is-removing"));
+  setTimeout(() => pieces.forEach((el) => el.remove()), REMOVE_FADE_MS);
 }
 
 export function setActiveColor(color) {
