@@ -2,7 +2,8 @@ import { state, setState } from "./app/state.js";
 import { loadPdf } from "./app/pdf-loader.js";
 import { clearPages, loadPages, mountPages, getPages } from "./app/pages.js";
 import { startRendering, stopRendering } from "./app/render.js";
-import { initZoom, zoomBy, ZOOM_STEP } from "./app/zoom.js";
+import { initZoom, zoomBy, ZOOM_STEP, clampScale, restoreViewAnchor } from "./app/zoom.js";
+import { initSessionSaving, loadSession, rememberFile, forgetSession, setSessionSaving, scheduleSessionSave } from "./app/session.js";
 import { initFileInput } from "./app/dnd.js";
 import { hashFile } from "./app/hash.js";
 import { getPdfRecord, putPdfRecord } from "./app/db.js";
@@ -132,14 +133,19 @@ async function renderPageAnnotations(content, pageNumber, viewport) {
   ]);
 }
 
-function showOpenFailure(err) {
+function showOpenFailure(err, { restoring = false } = {}) {
   console.error("Failed to open PDF", err);
   els.emptyState.hidden = false;
   els.pageList.hidden = true;
-  window.alert("Sorry, that file couldn't be opened as a PDF.");
+  // A remembered file that no longer opens is dropped quietly instead of
+  // alerting on every reload.
+  if (restoring) forgetSession();
+  else window.alert("Sorry, that file couldn't be opened as a PDF.");
 }
 
-async function openFile(file) {
+// `restore` is the saved session when this reopens the last file after a reload:
+// it already has the file's hash, zoom and reading position.
+async function openFile(file, { restore = null } = {}) {
   const myTicket = ++openTicket;
   els.emptyState.hidden = true;
   els.emptyState.classList.remove("is-drag-over");
@@ -149,11 +155,11 @@ async function openFile(file) {
   try {
     pdfDoc = await loadPdf(file);
   } catch (err) {
-    showOpenFailure(err);
+    showOpenFailure(err, { restoring: !!restore });
     return;
   }
 
-  const pdfHash = await hashFile(file);
+  const pdfHash = restore?.hash ?? (await hashFile(file));
   const existingRecord = await getPdfRecord(pdfHash);
   await putPdfRecord({
     hash: pdfHash,
@@ -165,12 +171,14 @@ async function openFile(file) {
   if (myTicket !== openTicket) return;
 
   // Retire the previous file's renders, shells and thumbnails first.
+  setSessionSaving(false);
   stopRendering();
   disposeSidePanel?.();
   disposeSidePanel = null;
   clearPages(els.pageList);
 
-  setState({ file, pdfDoc, pdfHash, numPages: pdfDoc.numPages, currentPage: 1, scale: BASE_SCALE });
+  const scale = restore ? clampScale(Number(restore.scale) || BASE_SCALE) : BASE_SCALE;
+  setState({ file, pdfDoc, pdfHash, numPages: pdfDoc.numPages, currentPage: 1, scale });
   els.zoomGroup.hidden = false;
   els.annotateGroup.hidden = false;
   els.notesGroup.hidden = false;
@@ -180,7 +188,7 @@ async function openFile(file) {
   try {
     loaded = await loadPages(pdfDoc);
   } catch (err) {
-    showOpenFailure(err);
+    showOpenFailure(err, { restoring: !!restore });
     return;
   }
   if (myTicket !== openTicket) return;
@@ -190,9 +198,18 @@ async function openFile(file) {
   // thumbnails.
   mountPages(els.pageList, loaded);
   for (const { wrapper, number } of getPages()) initNoteDropTarget(wrapper, number);
-  els.viewerMain.scrollTop = 0;
+  if (restore?.anchor) restoreViewAnchor(restore.anchor);
+  else els.viewerMain.scrollTop = 0;
   updateZoomLabel();
   startRendering({ viewerMainEl: els.viewerMain, onPageRendered: renderPageAnnotations });
+
+  // Save the file first, then start tracking position, so the position record
+  // written while scrolling is never overwritten by the initial one.
+  (restore ? Promise.resolve() : rememberFile(pdfHash, file)).then(() => {
+    if (myTicket !== openTicket) return;
+    setSessionSaving(true);
+    scheduleSessionSave();
+  });
 
   const dispose = await initSidePanel({
     pdfDoc,
@@ -220,7 +237,15 @@ initFileInput({
   onFile: openFile,
 });
 
-initZoom({ viewerMainEl: els.viewerMain, baseScale: BASE_SCALE, onZoom: updateZoomLabel });
+initZoom({
+  viewerMainEl: els.viewerMain,
+  baseScale: BASE_SCALE,
+  onZoom: () => {
+    updateZoomLabel();
+    scheduleSessionSave();
+  },
+});
+initSessionSaving(els.viewerMain);
 
 els.zoomInBtn.addEventListener("click", () => zoomBy(ZOOM_STEP));
 els.zoomOutBtn.addEventListener("click", () => zoomBy(1 / ZOOM_STEP));
@@ -240,3 +265,23 @@ els.exportBtn.addEventListener("click", async () => {
     els.exportBtn.textContent = originalLabel;
   }
 });
+
+// After a reload nothing is open: bring back the last file, in place.
+async function restoreLastSession() {
+  els.emptyState.hidden = true; // no "No PDF open yet" flash while checking
+  let session = null;
+  try {
+    session = await loadSession();
+  } catch (err) {
+    console.warn("Couldn't read the saved session", err);
+  }
+  // Someone opening a file meanwhile wins over the remembered one.
+  if (openTicket > 0) return;
+  if (!session) {
+    els.emptyState.hidden = false;
+    return;
+  }
+  await openFile(session.file, { restore: session });
+}
+
+restoreLastSession();

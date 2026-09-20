@@ -44,6 +44,10 @@ export function initZoom({ viewerMainEl: el, baseScale: base, onZoom: callback }
   });
 }
 
+export function clampScale(scale) {
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+}
+
 export function zoomBy(factor, clientPoint = null) {
   zoomTo(state.scale * factor, clientPoint);
 }
@@ -53,7 +57,7 @@ export function zoomBy(factor, clientPoint = null) {
 // the same page, and only repaints once input has paused for SETTLE_MS.
 export function zoomTo(scale, clientPoint = null) {
   const pages = getPages();
-  const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+  const next = clampScale(scale);
   if (pages.length === 0 || next === state.scale) return;
 
   const anchor = captureAnchor(pages, clientPoint);
@@ -66,6 +70,21 @@ export function zoomTo(scale, clientPoint = null) {
 
   clearTimeout(settleTimer);
   settleTimer = setTimeout(finishZoom, SETTLE_MS);
+}
+
+// Where the reader is, for saving across reloads: the page at the top edge of
+// the viewer and how far down it, in the same fractions zooming uses.
+export function getViewAnchor() {
+  const pages = getPages();
+  if (!viewerMainEl || pages.length === 0) return null;
+  const rootRect = viewerMainEl.getBoundingClientRect();
+  return captureAnchor(pages, { x: rootRect.left + viewerMainEl.clientWidth / 2, y: rootRect.top });
+}
+
+export function restoreViewAnchor(anchor) {
+  const pages = getPages();
+  if (!anchor || pages.length === 0) return;
+  restoreAnchor(pages, { ...anchor, index: Math.min(anchor.index, pages.length - 1) });
 }
 
 // The spot being zoomed around, remembered as a fraction of a page rather than
