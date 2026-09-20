@@ -133,6 +133,8 @@ export function createStickyNote({ note, viewport }) {
   el.addEventListener("pointercancel", endDrag);
 
   el.addEventListener("keydown", (e) => {
+    // Arrows from inside the text box must move the caret, not the note.
+    if (e.target !== el) return;
     const step = e.shiftKey ? 10 : 2;
     let dx = 0;
     let dy = 0;
