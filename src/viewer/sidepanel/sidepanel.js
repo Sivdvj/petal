@@ -6,7 +6,11 @@ export async function initSidePanel({ pdfDoc, sidePanelEl, thumbnailsEl, viewerM
   await renderThumbnails(pdfDoc, thumbnailsEl, {
     onSelect: (pageNumber) => {
       const wrapper = pageListEl.querySelector(`[data-page-number="${pageNumber}"]`);
-      wrapper?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (!wrapper) return;
+      // Scroll only the reading area. scrollIntoView() also scrolls every
+      // ancestor that can scroll, which moved the whole app, toolbar included.
+      const padding = parseFloat(getComputedStyle(viewerMainEl).paddingTop);
+      viewerMainEl.scrollTo({ top: wrapper.offsetTop - padding, behavior: "smooth" });
     },
   });
 

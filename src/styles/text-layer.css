@@ -59,3 +59,16 @@
 .text-layer.is-annotating br::selection {
   background: transparent;
 }
+
+/* pdf.js appends a canvas to <body> to measure text widths. Its own stylesheet
+   hides it; without this rule it is a visible inline element after #app, which
+   makes the page ~23px taller than the window and lets scrollIntoView() shift
+   the whole app (toolbar included) upward. */
+.hiddenCanvasElement {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  display: none;
+}
