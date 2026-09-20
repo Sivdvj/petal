@@ -1,19 +1,18 @@
 import { state, setState } from "./app/state.js";
 import { loadPdf } from "./app/pdf-loader.js";
-import { renderAllPages } from "./app/render.js";
+import { clearPages, loadPages, mountPages, getPages } from "./app/pages.js";
+import { startRendering, stopRendering } from "./app/render.js";
+import { initZoom, zoomBy, ZOOM_STEP } from "./app/zoom.js";
 import { initFileInput } from "./app/dnd.js";
 import { hashFile } from "./app/hash.js";
 import { getPdfRecord, putPdfRecord } from "./app/db.js";
 import { initSidePanel } from "./sidepanel/sidepanel.js";
-import { initHighlights, setAnnotateMode, setEraseMode, setActiveColor, loadHighlightsForPage } from "./highlights/highlight-manager.js";
+import { initHighlights, setAnnotateMode, setEraseMode, setActiveColor, syncAnnotateMode, loadHighlightsForPage } from "./highlights/highlight-manager.js";
 import { renderNoteTray } from "./notes/note-tray.js";
 import { initNoteDropTarget, loadNotesForPage } from "./notes/note-manager.js";
 import { exportAnnotatedPdf } from "./export/export-pdf.js";
 
 const BASE_SCALE = 1.25;
-const ZOOM_STEP = 1.1;
-const MIN_SCALE = 0.5;
-const MAX_SCALE = 3;
 
 const HIGHLIGHT_COLORS = [
   { id: "yellow", label: "Butter yellow" },
@@ -48,7 +47,7 @@ const els = {
 };
 
 let disposeSidePanel = null;
-let renderCallTicket = 0;
+let openTicket = 0;
 
 function updateZoomLabel() {
   els.zoomLevel.textContent = `${Math.round((state.scale / BASE_SCALE) * 100)}%`;
@@ -123,33 +122,25 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-async function renderCurrentPdf() {
-  const myCallTicket = ++renderCallTicket;
+// Runs for every page as it is painted, on its new content while that is still
+// off-screen, so highlights and notes appear together with the page.
+async function renderPageAnnotations(content, pageNumber, viewport) {
+  syncAnnotateMode(content.querySelector(".text-layer"));
+  await Promise.all([
+    loadHighlightsForPage(content, pageNumber, viewport),
+    loadNotesForPage(content, pageNumber, viewport),
+  ]);
+}
 
-  await renderAllPages(state.pdfDoc, {
-    pageListEl: els.pageList,
-    onPageRendered: async (wrapper, pageNumber, viewport) => {
-      initNoteDropTarget(wrapper, pageNumber, viewport);
-      await loadHighlightsForPage(wrapper, pageNumber, viewport);
-      await loadNotesForPage(wrapper, pageNumber, viewport);
-    },
-  });
-  if (myCallTicket !== renderCallTicket) return;
-
-  disposeSidePanel?.();
-  disposeSidePanel = await initSidePanel({
-    pdfDoc: state.pdfDoc,
-    sidePanelEl: els.sidePanel,
-    thumbnailsEl: els.thumbnails,
-    viewerMainEl: els.viewerMain,
-    pageListEl: els.pageList,
-  });
-  if (myCallTicket !== renderCallTicket) return;
-
-  updateZoomLabel();
+function showOpenFailure(err) {
+  console.error("Failed to open PDF", err);
+  els.emptyState.hidden = false;
+  els.pageList.hidden = true;
+  window.alert("Sorry, that file couldn't be opened as a PDF.");
 }
 
 async function openFile(file) {
+  const myTicket = ++openTicket;
   els.emptyState.hidden = true;
   els.emptyState.classList.remove("is-drag-over");
   els.pageList.hidden = false;
@@ -158,10 +149,7 @@ async function openFile(file) {
   try {
     pdfDoc = await loadPdf(file);
   } catch (err) {
-    console.error("Failed to open PDF", err);
-    els.emptyState.hidden = false;
-    els.pageList.hidden = true;
-    window.alert("Sorry, that file couldn't be opened as a PDF.");
+    showOpenFailure(err);
     return;
   }
 
@@ -174,6 +162,13 @@ async function openFile(file) {
     createdAt: existingRecord?.createdAt ?? Date.now(),
     lastOpenedAt: Date.now(),
   });
+  if (myTicket !== openTicket) return;
+
+  // Retire the previous file's renders, shells and thumbnails first.
+  stopRendering();
+  disposeSidePanel?.();
+  disposeSidePanel = null;
+  clearPages(els.pageList);
 
   setState({ file, pdfDoc, pdfHash, numPages: pdfDoc.numPages, currentPage: 1, scale: BASE_SCALE });
   els.zoomGroup.hidden = false;
@@ -181,7 +176,36 @@ async function openFile(file) {
   els.notesGroup.hidden = false;
   els.exportGroup.hidden = false;
 
-  await renderCurrentPdf();
+  let loaded;
+  try {
+    loaded = await loadPages(pdfDoc);
+  } catch (err) {
+    showOpenFailure(err);
+    return;
+  }
+  if (myTicket !== openTicket) return;
+
+  // Shells are built once per file. Zooming only resizes them, and painting
+  // fills them in lazily, so neither needs to rebuild the page list or the
+  // thumbnails.
+  mountPages(els.pageList, loaded);
+  for (const { wrapper, number } of getPages()) initNoteDropTarget(wrapper, number);
+  els.viewerMain.scrollTop = 0;
+  updateZoomLabel();
+  startRendering({ viewerMainEl: els.viewerMain, onPageRendered: renderPageAnnotations });
+
+  const dispose = await initSidePanel({
+    pdfDoc,
+    sidePanelEl: els.sidePanel,
+    thumbnailsEl: els.thumbnails,
+    viewerMainEl: els.viewerMain,
+    pageListEl: els.pageList,
+  });
+  if (myTicket !== openTicket) {
+    dispose();
+    return;
+  }
+  disposeSidePanel = dispose;
 }
 
 initHighlights({ pageListEl: els.pageList });
@@ -196,19 +220,7 @@ initFileInput({
   onFile: openFile,
 });
 
-async function zoomBy(factor) {
-  if (!state.pdfDoc) return;
-  setState({ scale: Math.min(MAX_SCALE, Math.max(MIN_SCALE, state.scale * factor)) });
-
-  els.zoomInBtn.disabled = true;
-  els.zoomOutBtn.disabled = true;
-  try {
-    await renderCurrentPdf();
-  } finally {
-    els.zoomInBtn.disabled = false;
-    els.zoomOutBtn.disabled = false;
-  }
-}
+initZoom({ viewerMainEl: els.viewerMain, baseScale: BASE_SCALE, onZoom: updateZoomLabel });
 
 els.zoomInBtn.addEventListener("click", () => zoomBy(ZOOM_STEP));
 els.zoomOutBtn.addEventListener("click", () => zoomBy(1 / ZOOM_STEP));

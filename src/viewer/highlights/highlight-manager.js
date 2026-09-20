@@ -1,4 +1,4 @@
-import { pageViewports } from "../app/render.js";
+import { getPageViewport, getContentViewport } from "../app/pages.js";
 import { state } from "../app/state.js";
 import { clientRectToPdfRect } from "../app/coords.js";
 import { putHighlight, getHighlightsForPage, deleteHighlight } from "../app/db.js";
@@ -25,6 +25,12 @@ export function setAnnotateMode(enabled) {
     el.classList.toggle("is-annotating", enabled);
   });
   if (!enabled) window.getSelection()?.removeAllRanges();
+}
+
+// Text layers are rebuilt whenever a page is repainted (zoom, scrolling back to
+// an evicted page), so each new one has to pick up the current mode itself.
+export function syncAnnotateMode(textLayerEl) {
+  textLayerEl?.classList.toggle("is-annotating", annotateMode);
 }
 
 // While erasing, highlights become clickable (see .is-erasing in highlights.css);
@@ -112,8 +118,11 @@ async function handlePointerUp() {
 
   for (const { wrapper, textLayer, range: pageRange } of perPage) {
     const pageNumber = Number(wrapper.dataset.pageNumber);
-    const viewport = pageViewports.get(pageNumber);
-    if (!viewport) continue;
+    const content = wrapper.querySelector(".page-content");
+    // The current zoom's viewport matches the wrapper's size on screen, even
+    // while the content is still a stretched preview of an older scale.
+    const viewport = getPageViewport(pageNumber);
+    if (!content || !viewport) continue;
 
     const clientRects = getSelectionLineRects(pageRange, textLayer);
     if (clientRects.length === 0) continue;
@@ -132,16 +141,20 @@ async function handlePointerUp() {
     };
 
     await putHighlight(highlight);
-    addHighlightToPage(wrapper, highlight, viewport);
+    // Drawn in the content's own pixels: the content, not the wrapper, is what
+    // the zoom preview stretches. It is looked up again because the page may
+    // have been repainted while the highlight was being saved.
+    const liveContent = wrapper.querySelector(".page-content") ?? content;
+    addHighlightToPage(liveContent, highlight, getContentViewport(liveContent));
   }
 
   selection.removeAllRanges();
 }
 
-export async function loadHighlightsForPage(wrapper, pageNumber, viewport) {
+export async function loadHighlightsForPage(content, pageNumber, viewport) {
   if (!state.pdfHash) return;
   const highlights = await getHighlightsForPage(state.pdfHash, pageNumber);
   for (const highlight of highlights) {
-    addHighlightToPage(wrapper, highlight, viewport);
+    addHighlightToPage(content, highlight, viewport);
   }
 }

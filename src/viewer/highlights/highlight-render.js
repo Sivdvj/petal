@@ -1,17 +1,19 @@
 import { pdfRectToViewportRect } from "../app/coords.js";
 
-function getOrCreateLayer(wrapper) {
-  let layer = wrapper.querySelector(".highlight-layer");
+// `content` is the page's .page-content element, not the .page-wrapper shell:
+// the zoom preview stretches the content, so layers must live inside it.
+function getOrCreateLayer(content) {
+  let layer = content.querySelector(".highlight-layer");
   if (!layer) {
     layer = document.createElement("div");
     layer.className = "highlight-layer";
-    wrapper.appendChild(layer);
+    content.appendChild(layer);
   }
   return layer;
 }
 
-export function addHighlightToPage(wrapper, highlight, viewport) {
-  const layer = getOrCreateLayer(wrapper);
+export function addHighlightToPage(content, highlight, viewport) {
+  const layer = getOrCreateLayer(content);
   for (const rect of highlight.rects) {
     const viewportRect = pdfRectToViewportRect(rect, viewport);
     const div = document.createElement("div");

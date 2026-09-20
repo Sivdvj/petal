@@ -65,9 +65,22 @@ button {
 
 .page-wrapper {
   position: relative;
+  /* Auto margins centre a page that fits, but (unlike align-items: center) let
+     one wider than the viewer overflow to the right only, so its left edge
+     stays reachable by scrolling when zoomed in. */
+  margin-inline: auto;
   background: #fff;
   box-shadow: 0 10px 24px rgba(46, 42, 36, 0.18), 0 2px 6px rgba(46, 42, 36, 0.1);
   border-radius: 2px;
+}
+
+/* The painted page. It is a separate box so a zoom can stretch everything
+   painted at the old scale (canvas, text, highlights, notes) as one unit. */
+.page-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
 }
 
 .page-wrapper canvas {
